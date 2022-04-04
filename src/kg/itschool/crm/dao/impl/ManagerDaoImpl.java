@@ -1,25 +1,27 @@
 package kg.itschool.crm.dao.impl;
 
 import kg.itschool.crm.dao.ManagerDao;
-import kg.itschool.crm.models.Manager;
+import kg.itschool.crm.dao.daoutil.Log;
+import kg.itschool.crm.model.Manager;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ManagerDaoImpl implements ManagerDao {
 
     public ManagerDaoImpl() {
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement preparedStatement = null;
 
         try {  // api:driver://host:port/database_name
-            System.out.println("Connecting to database...");
+            Log.info(this.getClass().getSimpleName() + " ManagerDaoImpl()  ", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
-            System.out.println("Connection succeeded.");
 
             String ddlQuery = "CREATE TABLE IF NOT EXISTS tb_managers(" +
                     "id           BIGSERIAL, " +
                     "first_name   VARCHAR(50)  NOT NULL, " +
-                    "last_name     VARCHAR(50)  NOT NULL, " +
+                    "last_name    VARCHAR(50)  NOT NULL, " +
                     "email        VARCHAR(100) NOT NULL UNIQUE, " +
                     "phone_number CHAR(13)     NOT NULL, " +
                     "salary       MONEY        NOT NULL, " +
@@ -30,16 +32,16 @@ public class ManagerDaoImpl implements ManagerDao {
                     "CONSTRAINT chk_manager_salary CHECK (salary > MONEY(0))," +
                     "CONSTRAINT chk_manager_first_name CHECK(LENGTH(first_name) > 2));";
 
-            System.out.println("Creating statement...");
-            statement = connection.createStatement();
-            System.out.println("Executing create table statement...");
-            statement.execute(ddlQuery);
+
+            Log.info(this.getClass().getSimpleName() + " ManagerDaoImpl()", PreparedStatement.class.getSimpleName(), "Creating preparedStatement");
+            preparedStatement = connection.prepareStatement(ddlQuery);
+            preparedStatement.execute();
 
         } catch (SQLException e) {
-            System.out.println("Some error occurred");
+            Log.info(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
-            close(statement);
+            close(preparedStatement);
             close(connection);
         }
     }
@@ -53,9 +55,8 @@ public class ManagerDaoImpl implements ManagerDao {
         Manager savedManager = null;
 
         try {
-            System.out.println("Connecting to database...");
+            Log.info(this.getClass().getSimpleName() + " save()", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
-            System.out.println("Connection succeeded.");
 
             String createQuery = "INSERT INTO tb_managers(" +
                     "last_name, first_name, phone_number, salary, date_created, dob, email) " +
@@ -91,7 +92,8 @@ public class ManagerDaoImpl implements ManagerDao {
             savedManager.setDob(resultSet.getDate("dob").toLocalDate());
             savedManager.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
+            Log.error(this.getClass().getSimpleName() + " ManagerDaoImpl()", e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -111,6 +113,7 @@ public class ManagerDaoImpl implements ManagerDao {
         Manager manager = null;
 
         try {
+            Log.info(this.getClass().getSimpleName() + " findById(" + id + ")", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
 
             String readQuery = "SELECT * FROM tb_managers WHERE id = ?";
@@ -131,9 +134,8 @@ public class ManagerDaoImpl implements ManagerDao {
             manager.setDob(resultSet.getDate("dob").toLocalDate());
             manager.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
-
-
-        } catch (SQLException e) {
+        } catch (Exception e) {
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -143,14 +145,45 @@ public class ManagerDaoImpl implements ManagerDao {
         return manager;
     }
 
-    private void close(AutoCloseable closeable) {
+    @Override
+    public List<Manager> findAll() {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        List<Manager> managers = new ArrayList<>();
+
         try {
-            System.out.println(closeable.getClass().getSimpleName() + " closing...");
-            closeable.close();
-            System.out.println(closeable.getClass().getSimpleName() + " closed.");
+            Log.info(this.getClass().getSimpleName() + " findAll()", Connection.class.getSimpleName(), "Establishing connection");
+            connection = getConnection();
+
+            String readQuery = "SELECT * FROM tb_managers;";
+
+            preparedStatement = connection.prepareStatement(readQuery);
+
+            resultSet = preparedStatement.executeQuery();
+
+            for (int i = 0; i <= managers.size() && resultSet.next(); i++) {
+                Manager manager = new Manager();
+                manager.setId(resultSet.getLong("id"));
+                manager.setFirstName(resultSet.getString("first_name"));
+                manager.setLastName(resultSet.getString("last_name"));
+                manager.setEmail(resultSet.getString("email"));
+                manager.setPhoneNumber(resultSet.getString("phone_number"));
+                manager.setSalary(Double.valueOf(resultSet.getString("salary").replaceAll("[^\\d\\.]", "")));
+                manager.setDob(resultSet.getDate("dob").toLocalDate());
+                manager.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
+                managers.add(manager);
+            }
+            return managers;
         } catch (Exception e) {
-            System.out.println("Could not close " + closeable.getClass().getSimpleName());
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClassName(), e.getMessage());
             e.printStackTrace();
+        } finally {
+            close(resultSet);
+            close(preparedStatement);
+            close(connection);
         }
+        return null;
     }
 }

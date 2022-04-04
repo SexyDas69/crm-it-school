@@ -1,22 +1,22 @@
 package kg.itschool.crm.dao.impl;
 
-
 import kg.itschool.crm.dao.MentorDao;
-import kg.itschool.crm.models.Mentor;
+import kg.itschool.crm.model.Mentor;
+import kg.itschool.crm.dao.daoutil.Log;
 
 import java.sql.*;
-
+import java.util.ArrayList;
+import java.util.List;
 
 public class MentorDaoImpl implements MentorDao {
 
     public MentorDaoImpl() {
         Connection connection = null;
-        Statement statement = null;
+        PreparedStatement preparedStatement = null;
 
         try {  // api:driver://host:port/database_name
-            System.out.println("Connecting to database...");
+            Log.info(this.getClass().getSimpleName() + " MentorDaoImpl()  ", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
-            System.out.println("Connection succeeded.");
 
             String ddlQuery = "CREATE TABLE IF NOT EXISTS tb_mentors(" +
                     "id           BIGSERIAL, " +
@@ -32,16 +32,15 @@ public class MentorDaoImpl implements MentorDao {
                     "CONSTRAINT chk_manager_salary CHECK (salary > MONEY(0))," +
                     "CONSTRAINT chk_manager_first_name CHECK(LENGTH(first_name) > 2));";
 
-            System.out.println("Creating statement...");
-            statement = connection.createStatement();
-            System.out.println("Executing create table statement...");
-            statement.execute(ddlQuery);
+            Log.info(this.getClass().getSimpleName() + " MentorDaoImpl()", PreparedStatement.class.getSimpleName(), "Creating preparedStatement");
+            preparedStatement = connection.prepareStatement(ddlQuery);
+            preparedStatement.execute();
 
         } catch (SQLException e) {
-            System.out.println("Some error occurred");
+            Log.info(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
-            close(statement);
+            close(preparedStatement);
             close(connection);
         }
     }
@@ -55,9 +54,8 @@ public class MentorDaoImpl implements MentorDao {
         Mentor savedMentor = null;
 
         try {
-            System.out.println("Connecting to database...");
+            Log.info(this.getClass().getSimpleName() + " save()", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
-            System.out.println("Connection succeeded.");
 
             String createQuery = "INSERT INTO tb_mentors(" +
                     "last_name, first_name, phone_number, salary, date_created, dob, email) " +
@@ -94,6 +92,7 @@ public class MentorDaoImpl implements MentorDao {
             savedMentor.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
         } catch (SQLException e) {
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -113,6 +112,7 @@ public class MentorDaoImpl implements MentorDao {
         Mentor mentor = null;
 
         try {
+            Log.info(this.getClass().getSimpleName() + " findById(" + id + ")", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
 
             String readQuery = "SELECT * FROM tb_mentors WHERE id = ?";
@@ -134,8 +134,8 @@ public class MentorDaoImpl implements MentorDao {
             mentor.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
 
-
         } catch (SQLException e) {
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -145,14 +145,47 @@ public class MentorDaoImpl implements MentorDao {
         return mentor;
     }
 
-    private void close(AutoCloseable closeable) {
+    @Override
+    public List<Mentor> findAll() {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        List<Mentor> mentors = new ArrayList<>();
+
         try {
-            System.out.println(closeable.getClass().getSimpleName() + " closing...");
-            closeable.close();
-            System.out.println(closeable.getClass().getSimpleName() + " closed.");
+            Log.info(this.getClass().getSimpleName() + " findAll()", Connection.class.getSimpleName(), "Establishing connection");
+            connection = getConnection();
+
+            String readQuery = "SELECT * FROM tb_mentors;";
+
+            preparedStatement = connection.prepareStatement(readQuery);
+
+            resultSet = preparedStatement.executeQuery();
+
+            for (int i = 0; i < mentors.size() && resultSet.next(); i++) {
+                Mentor mentor = new Mentor();
+                mentor.setId(resultSet.getLong("id"));
+                mentor.setFirstName(resultSet.getString("first_name"));
+                mentor.setLastName(resultSet.getString("last_name"));
+                mentor.setEmail(resultSet.getString("email"));
+                mentor.setPhoneNumber(resultSet.getString("phone_number"));
+                mentor.setSalary(Double.valueOf(resultSet.getString("salary").replaceAll("[^\\d\\.]", "")));
+                mentor.setDob(resultSet.getDate("dob").toLocalDate());
+                mentor.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
+                mentors.add(mentor);
+            }
+            return mentors;
         } catch (Exception e) {
-            System.out.println("Could not close " + closeable.getClass().getSimpleName());
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClassName(), e.getMessage());
             e.printStackTrace();
+        } finally {
+            close(resultSet);
+            close(preparedStatement);
+            close(connection);
         }
+
+        return null;
     }
 }
+

@@ -1,4 +1,4 @@
-package kg.itschool.crm.models;
+package kg.itschool.crm.model;
 
 import java.time.LocalTime;
 
@@ -7,7 +7,7 @@ public final class CourseFormat extends BaseEntity {
     private String format; // BOOTCAMP || MEETUP || ORDINARY || ONLINE MEETUP
     private int courseDurationWeeks;
     private LocalTime lessonDuration;
-    private int lessonPerWeek;
+    private int lessonsPerWeek;
     private boolean isOnline;
 
     public CourseFormat() {
@@ -19,7 +19,7 @@ public final class CourseFormat extends BaseEntity {
         this.format = format;
         this.courseDurationWeeks = courseDurationWeeks;
         this.lessonDuration = lessonDuration;
-        this.lessonPerWeek = lessonsPerWeek;
+        this.lessonsPerWeek = lessonsPerWeek;
         this.isOnline = isOnline;
     }
 
@@ -47,12 +47,12 @@ public final class CourseFormat extends BaseEntity {
         this.lessonDuration = lessonDuration;
     }
 
-    public int getLessonPerWeek() {
-        return lessonPerWeek;
+    public int getLessonsPerWeek() {
+        return lessonsPerWeek;
     }
 
-    public void setLessonPerWeek(int lessonsPerWeek) {
-        this.lessonPerWeek = lessonsPerWeek;
+    public void setLessonsPerWeek(int lessonsPerWeek) {
+        this.lessonsPerWeek = lessonsPerWeek;
     }
 
     public boolean isOnline() {
@@ -71,9 +71,8 @@ public final class CourseFormat extends BaseEntity {
                 ", format='" + format + '\'' +
                 ", courseDurationWeeks=" + courseDurationWeeks +
                 ", lessonDuration=" + lessonDuration +
-                ", lessonsPerWeek=" + lessonPerWeek +
+                ", lessonsPerWeek=" + lessonsPerWeek +
                 ", isOnline=" + isOnline +
                 '}';
     }
 }
-

@@ -1,9 +1,15 @@
 package kg.itschool.crm.dao.impl;
 
 import kg.itschool.crm.dao.GroupDao;
-import kg.itschool.crm.models.Group;
+import kg.itschool.crm.dao.daoutil.Log;
+import kg.itschool.crm.model.Course;
+import kg.itschool.crm.model.CourseFormat;
+import kg.itschool.crm.model.Group;
+
 import java.sql.*;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupDaoImpl implements GroupDao {
 
@@ -21,8 +27,15 @@ public class GroupDaoImpl implements GroupDao {
                     "name       VARCHAR(50)  NOT NULL, " +
                     "group_time  TIMESTAMP   NOT NULL, " +
                     "date_created TIMESTAMP    NOT NULL DEFAULT NOW(), " +
+                    "course_id BIGINT NOT NULL, " +
+                    "mentor_id BIGINT NOT NULL, " +
                     "" +
-                    "CONSTRAINT pk_course_id PRIMARY KEY(id))";
+                    "CONSTRAINT pk_group_id PRIMARY KEY(id)," +
+                    "CONSTRAINT fk_course_id FOREIGN KEY (course_id) " +
+                    "   REFERENCES tb_courses (id), " +
+                    "CONSTRAINT fk_mentor_id FOREIGN KEY (mentor_id) " +
+                    "   REFERENCES tb_mentor (id)" +
+                    ");";
 
             System.out.println("Creating statement...");
             statement = connection.createStatement();
@@ -53,19 +66,37 @@ public class GroupDaoImpl implements GroupDao {
             System.out.println("Connection succeeded.");
 
             String createQuery = "INSERT INTO tb_groups(" +
-                    "name, group_time, date_created ) " +
+                    "name, group_time, date_created, mentor_id, course_id) " +
 
-                    "VALUES(?, ?, ?)";
+                    "VALUES(?, ?, ?, ?, ?)";
 
             preparedStatement = connection.prepareStatement(createQuery);
             preparedStatement.setString(1, group.getName());
             preparedStatement.setString(2, String.valueOf(group.getGroupTime()));
             preparedStatement.setTimestamp(3, Timestamp.valueOf(group.getDateCreated()));
+            preparedStatement.setLong(4, group.getMentor().getId());
+            preparedStatement.setLong(5, group.getCourse().getId());
 
             preparedStatement.execute();
             close(preparedStatement);
 
-            String readQuery = "SELECT * FROM tb_courses ORDER BY id DESC LIMIT 1";
+            String subQuery = "SELECT c.id AS course_id, c.name, c.price, c.date_created, " +
+                    "f.id AS format_id, f.course_format, f.course_duration_weeks, f.lesson_duration, " +
+                    "f.lessons_per_week, f.is_online, f.date_created AS format_dc " +
+                    "FROM tb_course AS c " +
+                    "JOIN tb_course_format AS f " +
+                    "ON c.course_format_id = f.id";
+
+            String readQuery = "" +
+                    "SELECT g.id AS group_id, g.name, g.group_time, " +
+                    "g.date_created AS group_dc, g.course_id, g.mentor_id " +
+                    "FROM tb_groups AS g " +
+                    "JOIN (" + subQuery + " WHERE course_id = g.course_id) AS c " +
+                    "ON g.course_id = c.id " +
+                    "JOIN tb_mentor AS m " +
+                    "ON g.mentor_id = m.id " +
+                    "ORDER BY g.id DESC " +
+                    "LIMIT 1";
 
             preparedStatement = connection.prepareStatement(readQuery);
             resultSet = preparedStatement.executeQuery();
@@ -122,14 +153,54 @@ public class GroupDaoImpl implements GroupDao {
         return group;
     }
 
-    private void close(AutoCloseable closeable) {
+    @Override
+    public List<Group> findAll() {
+
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+
+        List<Group> groups = new ArrayList<>();
+
         try {
-            System.out.println(closeable.getClass().getSimpleName() + " closing...");
-            closeable.close();
-            System.out.println(closeable.getClass().getSimpleName() + " closed.");
-        } catch (Exception e) {
-            System.out.println("Could not close " + closeable.getClass().getSimpleName());
+            connection = getConnection();
+            String readQuery =
+                    "SELECT  g.id AS group_id, g.name AS group_name, g.group_time, " +
+                    "    g.date_created AS group_dc, " +
+                    "        g.course_id, c.name AS course_name, c.price, course_dc, " +
+                    "    format_id, course_format, course_duration_weeks, lesson_duration, " +
+                    "    lessons_per_week, is_online, format_dc, " +
+                    "        g.mentor_id, m.first_name, m.last_name, m.email, m.phone_number, m.salary, m.dob, m.date_created AS mentor_dc " +
+                    "    FROM tb_groups AS g " +
+                    "" +
+                    "    JOIN (SELECT c.id AS course_id, c.name, c.price, c.date_created AS course_dc, " +
+                    "    f.id AS format_id, f.course_format, f.course_duration_weeks, f.lesson_duration, " +
+                    "    f.lessons_per_week, f.is_online, f.date_created AS format_dc " +
+                    "    FROM tb_courses AS c " +
+                    "    JOIN tb_course_format AS f " +
+                    "    ON c.course_format_id = f.id) AS c " +
+                    "    ON g.course_id = c.course_id " +
+                    "" +
+                    "    JOIN tb_mentors AS m " +
+                    "    ON g.mentor_id = m.id " +
+                    ";";
+            preparedStatement = connection.prepareStatement(readQuery);
+
+            resultSet = preparedStatement.executeQuery();
+
+            groups = new ArrayList<>();
+
+
+
+
+            }
+
+
+        }catch (Exception e) {
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClassName(), e.getMessage());
             e.printStackTrace();
         }
+
+        return ;
     }
 }

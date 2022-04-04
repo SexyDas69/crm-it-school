@@ -1,13 +1,15 @@
 package kg.itschool.crm.dao.impl;
 
 import kg.itschool.crm.dao.StudentDao;
-import kg.itschool.crm.models.Student;
+import kg.itschool.crm.dao.daoutil.Log;
+import kg.itschool.crm.model.Student;
 
 import java.sql.*;
+import java.util.List;
 
-public class StudentsDaoImpl implements StudentDao {
+public class StudentDaoImpl implements StudentDao {
 
-    public StudentsDaoImpl() {
+    public StudentDaoImpl() {
         Connection connection = null;
         Statement statement = null;
 
@@ -88,6 +90,7 @@ public class StudentsDaoImpl implements StudentDao {
             savedStudent.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
         } catch (SQLException e) {
+            Log.error(this.getClass().getSimpleName() + " MentorDaoImpl()", e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -107,6 +110,7 @@ public class StudentsDaoImpl implements StudentDao {
         Student student = null;
 
         try {
+            Log.info(this.getClass().getSimpleName() + " findById(" + id + ")", Connection.class.getSimpleName(), "Establishing connection");
             connection = getConnection();
 
             String readQuery = "SELECT * FROM tb_students WHERE id = ?";
@@ -127,8 +131,8 @@ public class StudentsDaoImpl implements StudentDao {
             student.setDateCreated(resultSet.getTimestamp("date_created").toLocalDateTime());
 
 
-
         } catch (SQLException e) {
+            Log.error(this.getClass().getSimpleName(), e.getStackTrace()[0].getClass().getSimpleName(), e.getMessage());
             e.printStackTrace();
         } finally {
             close(resultSet);
@@ -138,14 +142,8 @@ public class StudentsDaoImpl implements StudentDao {
         return student;
     }
 
-    private void close(AutoCloseable closeable) {
-        try {
-            System.out.println(closeable.getClass().getSimpleName() + " closing...");
-            closeable.close();
-            System.out.println(closeable.getClass().getSimpleName() + " closed.");
-        } catch (Exception e) {
-            System.out.println("Could not close " + closeable.getClass().getSimpleName());
-            e.printStackTrace();
-        }
+    @Override
+    public List<Student> findAll() {
+        return null;
     }
 }
